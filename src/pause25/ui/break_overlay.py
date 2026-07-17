@@ -20,6 +20,8 @@ class BreakOverlay:
         self._on_finish = on_finish
         self._on_snooze = on_snooze
         self._hits = 0
+        self._quiz_answered = False
+        self._quiz_buttons: list[tk.Button] = []
 
         self.window = tk.Toplevel(parent)
         self.window.title("休息時間｜Pause25")
@@ -66,7 +68,19 @@ class BreakOverlay:
             padx=54,
             pady=42,
         )
-        card.place(relx=0.5, rely=0.5, anchor="center", relwidth=0.78, relheight=0.72)
+        if self.content.kind == "game":
+            card_width, card_height = 0.92, 0.84
+        elif self.content.kind == "fact":
+            card_width, card_height = 0.82, 0.78
+        else:
+            card_width, card_height = 0.78, 0.72
+        card.place(
+            relx=0.5,
+            rely=0.5,
+            anchor="center",
+            relwidth=card_width,
+            relheight=card_height,
+        )
 
         tk.Label(
             card,
@@ -84,7 +98,7 @@ class BreakOverlay:
             wraplength=820,
             justify="center",
         ).pack()
-        tk.Label(
+        body_label = tk.Label(
             card,
             text=self.content.body,
             font=(FONT, 16),
@@ -92,7 +106,9 @@ class BreakOverlay:
             bg=COLORS["surface"],
             wraplength=760,
             justify="center",
-        ).pack(pady=(18, 0))
+        )
+        if self.content.kind != "fact":
+            body_label.pack(pady=(18, 0))
 
         if self.content.source:
             tk.Label(
@@ -103,7 +119,9 @@ class BreakOverlay:
                 bg=COLORS["surface"],
             ).pack(pady=(12, 0))
 
-        if self.content.kind == "game":
+        if self.content.kind == "fact":
+            self._build_quiz(card)
+        elif self.content.kind == "game":
             self._build_game(card)
         else:
             spacer = tk.Frame(card, height=42, bg=COLORS["surface"])
@@ -111,9 +129,12 @@ class BreakOverlay:
 
         actions = tk.Frame(card, bg=COLORS["surface"])
         actions.pack(side="bottom", pady=(20, 0))
+        primary_text = (
+            "先選一個答案" if self.content.kind == "fact" else "我休息好了，開始下一輪"
+        )
         self.primary_button = tk.Button(
             actions,
-            text="我休息好了，開始下一輪",
+            text=primary_text,
             command=self._finish,
             font=(FONT, 14, "bold"),
             fg=COLORS["white"],
@@ -125,8 +146,11 @@ class BreakOverlay:
             padx=28,
             pady=14,
             cursor="hand2",
+            disabledforeground="#F4B2A7",
         )
         self.primary_button.pack(side="left", padx=8)
+        if self.content.kind == "fact":
+            self.primary_button.configure(state="disabled")
         tk.Button(
             actions,
             text="1 分鐘後再提醒",
@@ -151,16 +175,91 @@ class BreakOverlay:
         )
         self.hint.pack(side="bottom")
 
+    def _build_quiz(self, card: tk.Frame) -> None:
+        if not self.content.options or self.content.correct_index is None:
+            raise ValueError("Fact content requires quiz options and a correct answer")
+
+        options = tk.Frame(card, bg=COLORS["surface"])
+        options.pack(fill="x", pady=(28, 0))
+        for index, option in enumerate(self.content.options):
+            button = tk.Button(
+                options,
+                text=option,
+                command=lambda selected=index: self._answer_quiz(selected),
+                font=(FONT, 14, "bold"),
+                fg=COLORS["ink"],
+                bg=COLORS["leaf_soft"],
+                activeforeground=COLORS["ink"],
+                activebackground="#CBDDD2",
+                disabledforeground=COLORS["muted"],
+                relief="flat",
+                bd=0,
+                padx=18,
+                pady=16,
+                cursor="hand2",
+            )
+            button.pack(side="left", fill="x", expand=True, padx=7)
+            self._quiz_buttons.append(button)
+
+        self.quiz_result = tk.Label(
+            card,
+            text="選一個答案後顯示解釋",
+            font=(FONT, 13, "bold"),
+            fg=COLORS["muted"],
+            bg=COLORS["surface"],
+        )
+        self.quiz_result.pack(pady=(24, 0))
+        self.quiz_explanation = tk.Label(
+            card,
+            text="",
+            font=(FONT, 15),
+            fg=COLORS["muted"],
+            bg=COLORS["surface"],
+            wraplength=820,
+            justify="center",
+        )
+        self.quiz_explanation.pack(pady=(10, 0))
+
+    def _answer_quiz(self, selected_index: int) -> None:
+        if self._quiz_answered or self.content.correct_index is None:
+            return
+        self._quiz_answered = True
+        correct_index = self.content.correct_index
+
+        for index, button in enumerate(self._quiz_buttons):
+            if index == correct_index:
+                button.configure(
+                    state="disabled",
+                    bg=COLORS["leaf"],
+                    disabledforeground=COLORS["white"],
+                )
+            elif index == selected_index:
+                button.configure(
+                    state="disabled",
+                    bg=COLORS["tomato"],
+                    disabledforeground=COLORS["white"],
+                )
+            else:
+                button.configure(state="disabled", bg="#EEEAE1")
+
+        if selected_index == correct_index:
+            result = "答對了！"
+        else:
+            result = f"答案是：{self.content.options[correct_index]}"
+        self.quiz_result.configure(text=result, fg=COLORS["leaf"])
+        self.quiz_explanation.configure(text=self.content.body)
+        self.primary_button.configure(text="看完解釋，開始下一輪", state="normal")
+
     def _build_game(self, card: tk.Frame) -> None:
         self.game_area = tk.Frame(
             card,
             width=700,
-            height=190,
+            height=280,
             bg=COLORS["leaf_soft"],
             highlightbackground="#C5D6CC",
             highlightthickness=1,
         )
-        self.game_area.pack(pady=(24, 0), fill="x")
+        self.game_area.pack(pady=(24, 0), fill="both", expand=True)
         self.game_area.pack_propagate(False)
         self.score_label = tk.Label(
             self.game_area,
@@ -185,7 +284,7 @@ class BreakOverlay:
             height=1,
             cursor="hand2",
         )
-        self.target.place(x=325, y=70)
+        self.target.place(relx=0.5, rely=0.5, anchor="center")
 
     def _hit_target(self) -> None:
         self._hits += 1
@@ -197,9 +296,10 @@ class BreakOverlay:
             return
         self.game_area.update_idletasks()
         width = max(280, self.game_area.winfo_width())
+        height = max(180, self.game_area.winfo_height())
         x = random.randint(70, max(70, width - 80))
-        y = random.randint(35, 125)
-        self.target.place(x=x, y=y)
+        y = random.randint(55, max(55, height - 65))
+        self.target.place(x=x, y=y, anchor="center")
 
     def _show_escape_hint(self, _: tk.Event[tk.Misc]) -> None:
         self.hint.configure(text="休息提醒仍在這裡：請選擇「開始下一輪」或「1 分鐘後再提醒」")

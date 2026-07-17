@@ -22,3 +22,5 @@ class BreakContent:
     title: str
     body: str
     source: str = ""
+    options: tuple[str, ...] = ()
+    correct_index: int | None = None
