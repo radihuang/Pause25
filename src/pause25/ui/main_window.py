@@ -3,31 +3,43 @@ from __future__ import annotations
 import tkinter as tk
 from datetime import date
 
+from PIL import ImageTk
+
 from pause25.content import BreakContentPicker
 from pause25.models import BreakContent
 from pause25.storage import AppRepository
 from pause25.timer import CountdownTimer
 from pause25.ui.break_overlay import BreakOverlay
+from pause25.ui.dpi import UiScale
 from pause25.ui.theme import COLORS, FONT
+from pause25.ui.timer_ring import render_timer_ring
 
 
 class MainWindow:
     FOCUS_SECONDS = 25 * 60
     SNOOZE_MILLISECONDS = 60 * 1000
 
-    def __init__(self, root: tk.Tk, repository: AppRepository) -> None:
+    def __init__(
+        self,
+        root: tk.Tk,
+        repository: AppRepository,
+        ui_scale: UiScale | None = None,
+    ) -> None:
         self.root = root
         self.repository = repository
+        self.ui_scale = ui_scale or UiScale()
         self.timer = CountdownTimer(self.FOCUS_SECONDS)
         self.content_picker = BreakContentPicker()
         self.current_day = date.today()
         self._snoozed_content = None
         self._overlay: BreakOverlay | None = None
+        self._ring_photo: ImageTk.PhotoImage | None = None
+        self._rendered_ring_seconds: int | None = None
 
         self.root.title("25分｜番茄鐘")
         self.root.configure(bg=COLORS["paper"])
-        self.root.geometry("440x680")
-        self.root.minsize(420, 640)
+        self.root.geometry(f"{self.ui_scale.px(440)}x{self.ui_scale.px(680)}")
+        self.root.minsize(self.ui_scale.px(420), self.ui_scale.px(640))
         self.root.protocol("WM_DELETE_WINDOW", self._close)
 
         self._build()
@@ -35,7 +47,13 @@ class MainWindow:
         self._tick()
 
     def _build(self) -> None:
-        container = tk.Frame(self.root, bg=COLORS["paper"], padx=30, pady=24)
+        px = self.ui_scale.px
+        container = tk.Frame(
+            self.root,
+            bg=COLORS["paper"],
+            padx=px(30),
+            pady=px(24),
+        )
         container.pack(fill="both", expand=True)
 
         header = tk.Frame(container, bg=COLORS["paper"])
@@ -53,8 +71,8 @@ class MainWindow:
             font=(FONT, 10, "bold"),
             fg=COLORS["leaf"],
             bg=COLORS["leaf_soft"],
-            padx=11,
-            pady=6,
+            padx=px(11),
+            pady=px(6),
         )
         self.status_badge.pack(side="right")
 
@@ -64,59 +82,41 @@ class MainWindow:
             font=(FONT, 11),
             fg=COLORS["muted"],
             bg=COLORS["paper"],
-        ).pack(anchor="w", pady=(8, 18))
+        ).pack(anchor="w", pady=(px(8), px(18)))
 
         self.timer_canvas = tk.Canvas(
             container,
-            width=320,
-            height=320,
+            width=px(320),
+            height=px(320),
             bg=COLORS["paper"],
             highlightthickness=0,
         )
         self.timer_canvas.pack()
-        self.timer_canvas.create_oval(
-            26,
-            26,
-            294,
-            294,
-            outline=COLORS["line"],
-            width=14,
-        )
-        self.progress_arc = self.timer_canvas.create_arc(
-            26,
-            26,
-            294,
-            294,
-            start=90,
-            extent=-360,
-            style="arc",
-            outline=COLORS["tomato"],
-            width=14,
-        )
+        self.ring_image = self.timer_canvas.create_image(0, 0, anchor="nw")
         self.timer_canvas.create_text(
-            160,
-            117,
+            px(160),
+            px(117),
             text="專注時間",
             font=(FONT, 12, "bold"),
             fill=COLORS["muted"],
         )
         self.time_text = self.timer_canvas.create_text(
-            160,
-            163,
+            px(160),
+            px(163),
             text="25:00",
             font=(FONT, 42, "bold"),
             fill=COLORS["ink"],
         )
         self.timer_canvas.create_text(
-            160,
-            208,
+            px(160),
+            px(208),
             text="完成後隨機出現休息內容",
             font=(FONT, 10),
             fill=COLORS["muted"],
         )
 
         controls = tk.Frame(container, bg=COLORS["paper"])
-        controls.pack(pady=(4, 22))
+        controls.pack(pady=(px(4), px(22)))
         self.primary_button = tk.Button(
             controls,
             text="開始專注",
@@ -128,11 +128,11 @@ class MainWindow:
             activebackground=COLORS["tomato_dark"],
             relief="flat",
             bd=0,
-            padx=32,
-            pady=13,
+            padx=px(32),
+            pady=px(13),
             cursor="hand2",
         )
-        self.primary_button.pack(side="left", padx=6)
+        self.primary_button.pack(side="left", padx=px(6))
         tk.Button(
             controls,
             text="重設",
@@ -143,18 +143,18 @@ class MainWindow:
             activebackground=COLORS["line"],
             relief="flat",
             bd=0,
-            padx=20,
-            pady=14,
+            padx=px(20),
+            pady=px(14),
             cursor="hand2",
-        ).pack(side="left", padx=6)
+        ).pack(side="left", padx=px(6))
 
         summary_card = tk.Frame(
             container,
             bg=COLORS["surface"],
             highlightbackground=COLORS["line"],
-            highlightthickness=1,
-            padx=20,
-            pady=14,
+            highlightthickness=px(1),
+            padx=px(20),
+            pady=px(14),
         )
         summary_card.pack(fill="x")
         tk.Label(
@@ -171,9 +171,9 @@ class MainWindow:
             fg=COLORS["ink"],
             bg=COLORS["surface"],
         )
-        self.session_value.grid(row=1, column=0, sticky="w", pady=(3, 0))
-        tk.Frame(summary_card, width=1, height=40, bg=COLORS["line"]).grid(
-            row=0, column=1, rowspan=2, padx=28
+        self.session_value.grid(row=1, column=0, sticky="w", pady=(px(3), 0))
+        tk.Frame(summary_card, width=px(1), height=px(40), bg=COLORS["line"]).grid(
+            row=0, column=1, rowspan=2, padx=px(28)
         )
         tk.Label(
             summary_card,
@@ -189,7 +189,7 @@ class MainWindow:
             fg=COLORS["ink"],
             bg=COLORS["surface"],
         )
-        self.minutes_value.grid(row=1, column=2, sticky="w", pady=(3, 0))
+        self.minutes_value.grid(row=1, column=2, sticky="w", pady=(px(3), 0))
 
         tk.Label(
             container,
@@ -197,7 +197,7 @@ class MainWindow:
             font=(FONT, 10),
             fg=COLORS["muted"],
             bg=COLORS["paper"],
-        ).pack(pady=(16, 0))
+        ).pack(pady=(px(16), 0))
 
     def _toggle_timer(self) -> None:
         if self.timer.status == "running":
@@ -225,7 +225,21 @@ class MainWindow:
         remaining = self.timer.remaining_seconds
         minutes, seconds = divmod(remaining, 60)
         self.timer_canvas.itemconfigure(self.time_text, text=f"{minutes:02d}:{seconds:02d}")
-        self.timer_canvas.itemconfigure(self.progress_arc, extent=-360 * self.timer.progress)
+        if remaining != self._rendered_ring_seconds:
+            size = self.ui_scale.px(320)
+            ring = render_timer_ring(
+                size=size,
+                inset=self.ui_scale.px(26),
+                line_width=self.ui_scale.px(14),
+                progress=self.timer.progress,
+                background=COLORS["paper"],
+                track_color=COLORS["line"],
+                progress_color=COLORS["tomato"],
+            )
+            self._ring_photo = ImageTk.PhotoImage(ring, master=self.timer_canvas)
+            self.timer_canvas.itemconfigure(self.ring_image, image=self._ring_photo)
+            self.timer_canvas.tag_lower(self.ring_image)
+            self._rendered_ring_seconds = remaining
 
     def _update_controls(self) -> None:
         status = self.timer.status
@@ -254,6 +268,7 @@ class MainWindow:
         self._overlay = BreakOverlay(
             self.root,
             content,
+            self.ui_scale,
             on_finish=self._start_next_round,
             on_snooze=lambda: self._snooze(content),
         )
