@@ -8,7 +8,9 @@ version = "0.1.0"
 description = "A calm Pomodoro timer with impossible-to-miss break prompts."
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "pillow>=12.3.0",
+]
 
 [project.gui-scripts]
 pause25 = "pause25.app:main"

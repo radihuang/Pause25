@@ -5,6 +5,7 @@ import tkinter as tk
 from collections.abc import Callable
 
 from pause25.models import BreakContent
+from pause25.ui.dpi import UiScale
 from pause25.ui.theme import COLORS, FONT
 
 
@@ -13,10 +14,12 @@ class BreakOverlay:
         self,
         parent: tk.Tk,
         content: BreakContent,
+        ui_scale: UiScale,
         on_finish: Callable[[], None],
         on_snooze: Callable[[], None],
     ) -> None:
         self.content = content
+        self.ui_scale = ui_scale
         self._on_finish = on_finish
         self._on_snooze = on_snooze
         self._hits = 0
@@ -40,7 +43,13 @@ class BreakOverlay:
         self.window.after(100, self._take_focus)
 
     def _build(self) -> None:
-        shell = tk.Frame(self.window, bg=COLORS["ink"], padx=48, pady=36)
+        px = self.ui_scale.px
+        shell = tk.Frame(
+            self.window,
+            bg=COLORS["ink"],
+            padx=px(48),
+            pady=px(36),
+        )
         shell.pack(fill="both", expand=True)
 
         top = tk.Frame(shell, bg=COLORS["ink"])
@@ -64,9 +73,9 @@ class BreakOverlay:
             shell,
             bg=COLORS["surface"],
             highlightbackground="#475B52",
-            highlightthickness=1,
-            padx=54,
-            pady=42,
+            highlightthickness=px(1),
+            padx=px(54),
+            pady=px(42),
         )
         if self.content.kind == "game":
             card_width, card_height = 0.92, 0.84
@@ -95,7 +104,7 @@ class BreakOverlay:
             font=(FONT, 31, "bold"),
             fg=COLORS["ink"],
             bg=COLORS["surface"],
-            wraplength=820,
+            wraplength=px(820),
             justify="center",
         ).pack()
         body_label = tk.Label(
@@ -104,7 +113,7 @@ class BreakOverlay:
             font=(FONT, 16),
             fg=COLORS["muted"],
             bg=COLORS["surface"],
-            wraplength=760,
+            wraplength=px(760),
             justify="center",
         )
         if self.content.kind != "fact":
@@ -124,7 +133,7 @@ class BreakOverlay:
         elif self.content.kind == "game":
             self._build_game(card)
         else:
-            spacer = tk.Frame(card, height=42, bg=COLORS["surface"])
+            spacer = tk.Frame(card, height=px(42), bg=COLORS["surface"])
             spacer.pack()
 
         actions = tk.Frame(card, bg=COLORS["surface"])
@@ -143,12 +152,12 @@ class BreakOverlay:
             activeforeground=COLORS["white"],
             relief="flat",
             bd=0,
-            padx=28,
-            pady=14,
+            padx=px(28),
+            pady=px(14),
             cursor="hand2",
             disabledforeground="#F4B2A7",
         )
-        self.primary_button.pack(side="left", padx=8)
+        self.primary_button.pack(side="left", padx=px(8))
         if self.content.kind == "fact":
             self.primary_button.configure(state="disabled")
         tk.Button(
@@ -161,10 +170,10 @@ class BreakOverlay:
             activebackground="#CBDDD2",
             relief="flat",
             bd=0,
-            padx=24,
-            pady=14,
+            padx=px(24),
+            pady=px(14),
             cursor="hand2",
-        ).pack(side="left", padx=8)
+        ).pack(side="left", padx=px(8))
 
         self.hint = tk.Label(
             shell,
@@ -179,8 +188,9 @@ class BreakOverlay:
         if not self.content.options or self.content.correct_index is None:
             raise ValueError("Fact content requires quiz options and a correct answer")
 
+        px = self.ui_scale.px
         options = tk.Frame(card, bg=COLORS["surface"])
-        options.pack(fill="x", pady=(28, 0))
+        options.pack(fill="x", pady=(px(28), 0))
         for index, option in enumerate(self.content.options):
             button = tk.Button(
                 options,
@@ -194,11 +204,11 @@ class BreakOverlay:
                 disabledforeground=COLORS["muted"],
                 relief="flat",
                 bd=0,
-                padx=18,
-                pady=16,
+                padx=px(18),
+                pady=px(16),
                 cursor="hand2",
             )
-            button.pack(side="left", fill="x", expand=True, padx=7)
+            button.pack(side="left", fill="x", expand=True, padx=px(7))
             self._quiz_buttons.append(button)
 
         self.quiz_result = tk.Label(
@@ -215,7 +225,7 @@ class BreakOverlay:
             font=(FONT, 15),
             fg=COLORS["muted"],
             bg=COLORS["surface"],
-            wraplength=820,
+            wraplength=px(820),
             justify="center",
         )
         self.quiz_explanation.pack(pady=(10, 0))
@@ -251,13 +261,14 @@ class BreakOverlay:
         self.primary_button.configure(text="看完解釋，開始下一輪", state="normal")
 
     def _build_game(self, card: tk.Frame) -> None:
+        px = self.ui_scale.px
         self.game_area = tk.Frame(
             card,
-            width=700,
-            height=280,
+            width=px(700),
+            height=px(280),
             bg=COLORS["leaf_soft"],
             highlightbackground="#C5D6CC",
-            highlightthickness=1,
+            highlightthickness=px(1),
         )
         self.game_area.pack(pady=(24, 0), fill="both", expand=True)
         self.game_area.pack_propagate(False)
@@ -268,7 +279,7 @@ class BreakOverlay:
             fg=COLORS["leaf"],
             bg=COLORS["leaf_soft"],
         )
-        self.score_label.place(x=14, y=12)
+        self.score_label.place(x=px(14), y=px(12))
         self.target = tk.Button(
             self.game_area,
             text="●",
@@ -295,10 +306,11 @@ class BreakOverlay:
             self.primary_button.configure(text="完成遊戲，開始下一輪")
             return
         self.game_area.update_idletasks()
-        width = max(280, self.game_area.winfo_width())
-        height = max(180, self.game_area.winfo_height())
-        x = random.randint(70, max(70, width - 80))
-        y = random.randint(55, max(55, height - 65))
+        px = self.ui_scale.px
+        width = max(px(280), self.game_area.winfo_width())
+        height = max(px(180), self.game_area.winfo_height())
+        x = random.randint(px(70), max(px(70), width - px(80)))
+        y = random.randint(px(55), max(px(55), height - px(65)))
         self.target.place(x=x, y=y, anchor="center")
 
     def _show_escape_hint(self, _: tk.Event[tk.Misc]) -> None:
