@@ -311,7 +311,7 @@ class BreakOverlay:
         height = max(px(180), self.game_area.winfo_height())
         x = random.randint(px(70), max(px(70), width - px(80)))
         y = random.randint(px(55), max(px(55), height - px(65)))
-        self.target.place(x=x, y=y, anchor="center")
+        self.target.place(x=x, y=y, relx=0, rely=0, anchor="center")
 
     def _show_escape_hint(self, _: tk.Event[tk.Misc]) -> None:
         self.hint.configure(text="休息提醒仍在這裡：請選擇「開始下一輪」或「1 分鐘後再提醒」")
