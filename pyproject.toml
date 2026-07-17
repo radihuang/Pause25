@@ -1,0 +1,28 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pause25"
+version = "0.1.0"
+description = "A calm Pomodoro timer with impossible-to-miss break prompts."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = []
+
+[project.gui-scripts]
+pause25 = "pause25.app:main"
+
+[dependency-groups]
+dev = [
+    "pyinstaller>=6.0",
+    "pytest>=8.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pause25"]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+pythonpath = ["src"]
+testpaths = ["tests"]
