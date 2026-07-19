@@ -26,3 +26,34 @@ def test_first_game_hit_resets_relative_position() -> None:
         anchor="center",
     )
     overlay.score_label.configure.assert_called_once_with(text="1 / 8")
+
+
+def _make_countdown_overlay(remaining: int) -> BreakOverlay:
+    overlay = object.__new__(BreakOverlay)
+    overlay._break_remaining = remaining
+    overlay._break_after_id = None
+    overlay.break_countdown = Mock()
+    overlay.window = Mock()
+    overlay._finish = Mock()
+    return overlay
+
+
+def test_break_tick_updates_countdown_and_reschedules() -> None:
+    overlay = _make_countdown_overlay(remaining=300)
+
+    overlay._tick_break()
+
+    overlay.break_countdown.configure.assert_called_once_with(
+        text="休息倒數 04:59，歸零自動開始下一輪"
+    )
+    overlay.window.after.assert_called_once_with(1000, overlay._tick_break)
+    overlay._finish.assert_not_called()
+
+
+def test_break_tick_finishes_at_zero() -> None:
+    overlay = _make_countdown_overlay(remaining=1)
+
+    overlay._tick_break()
+
+    overlay._finish.assert_called_once_with()
+    overlay.window.after.assert_not_called()

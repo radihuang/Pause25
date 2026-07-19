@@ -17,11 +17,14 @@ class BreakOverlay:
         ui_scale: UiScale,
         on_finish: Callable[[], None],
         on_snooze: Callable[[], None],
+        break_seconds: int = 5 * 60,
     ) -> None:
         self.content = content
         self.ui_scale = ui_scale
         self._on_finish = on_finish
         self._on_snooze = on_snooze
+        self._break_remaining = break_seconds
+        self._break_after_id: str | None = None
         self._hits = 0
         self._quiz_answered = False
         self._quiz_buttons: list[tk.Button] = []
@@ -41,6 +44,7 @@ class BreakOverlay:
 
         self._build()
         self.window.after(100, self._take_focus)
+        self._break_after_id = self.window.after(1000, self._tick_break)
 
     def _build(self) -> None:
         px = self.ui_scale.px
@@ -68,6 +72,14 @@ class BreakOverlay:
             fg="#BFCBC5",
             bg=COLORS["ink"],
         ).pack(side="right")
+        self.break_countdown = tk.Label(
+            top,
+            text=self._format_break(),
+            font=(FONT, 14, "bold"),
+            fg=COLORS["sun"],
+            bg=COLORS["ink"],
+        )
+        self.break_countdown.pack()
 
         card = tk.Frame(
             shell,
@@ -313,6 +325,18 @@ class BreakOverlay:
         y = random.randint(px(55), max(px(55), height - px(65)))
         self.target.place(x=x, y=y, relx=0, rely=0, anchor="center")
 
+    def _format_break(self) -> str:
+        minutes, seconds = divmod(max(0, self._break_remaining), 60)
+        return f"休息倒數 {minutes:02d}:{seconds:02d}，歸零自動開始下一輪"
+
+    def _tick_break(self) -> None:
+        self._break_remaining -= 1
+        if self._break_remaining <= 0:
+            self._finish()
+            return
+        self.break_countdown.configure(text=self._format_break())
+        self._break_after_id = self.window.after(1000, self._tick_break)
+
     def _show_escape_hint(self, _: tk.Event[tk.Misc]) -> None:
         self.hint.configure(text="休息提醒仍在這裡：請選擇「開始下一輪」或「1 分鐘後再提醒」")
         self.window.bell()
@@ -334,6 +358,12 @@ class BreakOverlay:
         self._on_snooze()
 
     def _release_and_destroy(self) -> None:
+        if self._break_after_id is not None:
+            try:
+                self.window.after_cancel(self._break_after_id)
+            except tk.TclError:
+                pass
+            self._break_after_id = None
         try:
             self.window.grab_release()
         except tk.TclError:

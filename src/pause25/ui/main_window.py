@@ -17,6 +17,7 @@ from pause25.ui.timer_ring import render_timer_ring
 
 class MainWindow:
     FOCUS_SECONDS = 25 * 60
+    BREAK_SECONDS = 5 * 60
     SNOOZE_MILLISECONDS = 60 * 1000
 
     def __init__(
@@ -122,10 +123,10 @@ class MainWindow:
             text="開始專注",
             command=self._toggle_timer,
             font=(FONT, 14, "bold"),
-            fg=COLORS["white"],
-            bg=COLORS["tomato"],
-            activeforeground=COLORS["white"],
-            activebackground=COLORS["tomato_dark"],
+            fg=COLORS["tomato"],
+            bg=COLORS["surface"],
+            activeforeground=COLORS["tomato_dark"],
+            activebackground=COLORS["line"],
             relief="flat",
             bd=0,
             padx=px(32),
@@ -271,6 +272,7 @@ class MainWindow:
             self.ui_scale,
             on_finish=self._start_next_round,
             on_snooze=lambda: self._snooze(content),
+            break_seconds=self.BREAK_SECONDS,
         )
 
     def _snooze(self, content: BreakContent) -> None:
