@@ -1,7 +1,11 @@
 from unittest.mock import Mock, patch
 
-from pause25.ui.break_overlay import BreakOverlay
+from pause25.ui.break_overlay import BREAK_REMINDER_TEXT, BreakOverlay
 from pause25.ui.dpi import UiScale
+
+
+def test_break_reminder_lists_all_activities() -> None:
+    assert BREAK_REMINDER_TEXT == "休息一下：喝水裝水／買咖啡／上廁所／寫日記"
 
 
 def test_first_game_hit_resets_relative_position() -> None:

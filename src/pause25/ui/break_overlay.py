@@ -9,6 +9,9 @@ from pause25.ui.dpi import UiScale
 from pause25.ui.theme import COLORS, FONT
 
 
+BREAK_REMINDER_TEXT = "休息一下：喝水裝水／買咖啡／上廁所／寫日記"
+
+
 class BreakOverlay:
     def __init__(
         self,
@@ -80,6 +83,14 @@ class BreakOverlay:
             bg=COLORS["ink"],
         )
         self.break_countdown.pack()
+        self.break_reminder = tk.Label(
+            shell,
+            text=BREAK_REMINDER_TEXT,
+            font=(FONT, 15, "bold"),
+            fg=COLORS["white"],
+            bg=COLORS["ink"],
+        )
+        self.break_reminder.pack(pady=(px(12), 0))
 
         card = tk.Frame(
             shell,
@@ -218,6 +229,8 @@ class BreakOverlay:
                 bd=0,
                 padx=px(18),
                 pady=px(16),
+                wraplength=px(240),
+                justify="center",
                 cursor="hand2",
             )
             button.pack(side="left", fill="x", expand=True, padx=px(7))
